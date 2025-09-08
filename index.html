@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exactaclock - Corrected GMT Time</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .time-display {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 30px 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            letter-spacing: 2px;
+        }
+
+        .location-info {
+            margin: 20px 0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .info-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .loading {
+            font-size: 1.2rem;
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+
+        .error {
+            color: #ff6b6b;
+            font-size: 1.1rem;
+            margin: 20px 0;
+        }
+
+        .permission-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .permission-button:hover {
+            background: white;
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .location-update {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid #4CAF50;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .map-container {
+            margin: 20px 0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+        }
+
+        .map-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .map-toggle {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .map-toggle:hover, .map-toggle.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .coordinates-input {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .coord-input {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            width: 120px;
+            text-align: center;
+        }
+
+        .coord-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .apply-coords {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .apply-coords:hover {
+            background: #45a049;
+        }
+
+        .description {
+            font-size: 1rem;
+            margin: 0 0 30px 0;
+            line-height: 1.6;
+            opacity: 0.9;
+            text-align: center;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @media (max-width: 768px) {
+            .time-display {
+                font-size: 2.5rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Exactaclock</h1>
+        <div class="description">
+            This clock displays "corrected" local time based on your exact GPS coordinates. 
+            Instead of sharp timezone jumps, time adjusts gradually as you move between timezone boundaries. 
+            If you're exactly between two timezones, the time shifts by up to 30 minutes from standard time.
+        </div>
+        <div id="app">
+            <div class="loading">Requesting location permission...</div>
+            <button class="permission-button" id="locationBtn" style="display: none;">
+                Enable Location Access
+            </button>
+            <div class="error" id="error" style="display: none;"></div>
+            <div class="location-update" id="locationUpdate" style="display: none;">📍 Location updated - recalculating time...</div>
+            <div id="clock" style="display: none;">
+                <div class="time-display" id="exactTime">--:--:--</div>
+                <div class="location-info">
+                    <div class="info-item">
+                        <strong>📍 Location:</strong> <span id="coordinates">--</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>🌍 Timezone:</strong> <span id="timezone">--</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>📝 Timezone Name:</strong> <span id="timezoneFull">--</span>
+                    </div>
+                    <div class="info-item" style="background: rgba(255, 255, 255, 0.2);">
+                        <strong>⏰ Time Adjustment:</strong> <span id="adjustment">--</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>🕒 Normal Local Time:</strong> <span id="normalTime">--</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>🌐 Reference GMT Time:</strong> <span id="localTime">--</span>
+                    </div>
+                </div>
+                
+                <!-- Map Section -->
+                <div class="map-container" id="mapContainer" style="display: none;">
+                    <div class="map-controls">
+                        <button class="map-toggle active" id="gpsMode">📍 GPS Mode</button>
+                        <button class="map-toggle" id="manualMode">🗺️ Manual Mode</button>
+                    </div>
+                    <div id="map"></div>
+                    <div class="coordinates-input" id="coordsInput" style="display: none;">
+                        <input type="number" class="coord-input" id="latInput" placeholder="Latitude" step="0.0001">
+                        <input type="number" class="coord-input" id="lngInput" placeholder="Longitude" step="0.0001">
+                        <button class="apply-coords" id="applyCoords">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&callback=initMap"></script>
+    <script src="src/exactaclock.js"></script>
+    <script src="src/app.js"></script>
+</body>
+</html>

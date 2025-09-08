@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Exactaclock Test - Timezone & Seconds Precision</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-case { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .precision-test { background: #e8f4fd; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .adjustment { font-weight: bold; color: #2196F3; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Exactaclock Test Suite</h1>
+    <p>Testing timezone detection and seconds-level time precision</p>
+    
+    <div id="test-results"></div>
+    <div id="precision-tests"></div>
+    
+    <script src="src/exactaclock.js"></script>
+    <script>
+        // Format adjustment for display
+        const formatAdjustment = (result) => {
+            if (result.adjustmentSecondsTotal === 0) {
+                return 'No adjustment needed';
+            } else if (Math.abs(result.adjustmentSecondsTotal) < 60) {
+                const seconds = Math.abs(result.adjustmentSecondsTotal);
+                return `${seconds} second${seconds !== 1 ? 's' : ''} ${result.adjustmentSecondsTotal > 0 ? 'ahead' : 'behind'}`;
+            } else {
+                const totalSeconds = Math.abs(result.adjustmentSecondsTotal);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                let text = `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+                if (seconds > 0) {
+                    text += `, ${seconds} second${seconds !== 1 ? 's' : ''}`;
+                }
+                text += ` ${result.adjustmentSecondsTotal > 0 ? 'ahead' : 'behind'}`;
+                return text;
+            }
+        };
+
+        // Test the core functionality
+        const runTests = () => {
+            const results = document.getElementById('test-results');
+            let output = '<h2>🌍 Global Coordinates Test</h2>';
+            
+            // Test coordinates in different timezones
+            const testCases = [
+                { lat: 40.7128, lng: -74.0060, name: 'New York Area' }, // UTC-5
+                { lat: 51.5074, lng: -0.1278, name: 'London Area' },   // UTC+0
+                { lat: 35.6762, lng: 139.6503, name: 'Tokyo Area' },   // UTC+9
+                { lat: -33.8688, lng: 151.2093, name: 'Sydney Area' }, // UTC+10
+                { lat: 37.7749, lng: -122.4194, name: 'San Francisco Area' }, // UTC-8
+                { lat: 48.8566, lng: 2.3522, name: 'Paris Area' }, // UTC+1
+            ];
+            
+            testCases.forEach(coords => {
+                const result = window.ExactaClock.getExactTime(coords);
+                const timezone = window.ExactaClock.getTimezone(coords);
+                
+                output += `<div class="test-case">`;
+                output += `<h3>📍 ${coords.name}</h3>`;
+                output += `<p><strong>Coordinates:</strong> ${coords.lat}°, ${coords.lng}°</p>`;
+                output += `<p><strong>Timezone:</strong> ${timezone.name} (${timezone.fullName})</p>`;
+                output += `<p><strong>Exact Time:</strong> ${result.exactTime.toLocaleTimeString('en-US', { timeZone: 'UTC' })} GMT</p>`;
+                output += `<p><strong class="adjustment">Time Adjustment:</strong> ${formatAdjustment(result)}</p>`;
+                output += `<p><strong>Precision Details:</strong></p>`;
+                output += `<ul>`;
+                output += `<li>Minutes: ${result.adjustmentMinutes}</li>`;
+                output += `<li>Seconds (precise): ${result.adjustmentSeconds}</li>`;
+                output += `<li>Seconds (total): ${result.adjustmentSecondsTotal}</li>`;
+                output += `<li>Milliseconds: ${result.adjustmentMilliseconds}</li>`;
+                output += `</ul>`;
+                output += `</div>`;
+            });
+            
+            results.innerHTML = output;
+        };
+
+        // Test seconds-level precision with coordinates near timezone boundaries
+        const runPrecisionTests = () => {
+            const precisionDiv = document.getElementById('precision-tests');
+            let output = '<h2>⚡ Seconds Precision Tests</h2>';
+            output += '<p>Testing coordinates near timezone boundaries to verify seconds-level adjustments</p>';
+            
+            // Test coordinates near timezone boundaries
+            const precisionCases = [
+                { lat: 40.0, lng: -75.0, name: 'Near EST/CST boundary' },
+                { lat: 45.0, lng: -112.0, name: 'Near MST/PST boundary' },
+                { lat: 55.0, lng: 15.0, name: 'Near CET/EET boundary' },
+                { lat: 35.0, lng: 135.0, name: 'Near JST center' },
+                { lat: 0.0, lng: 0.0, name: 'Greenwich meridian' },
+                { lat: 0.0, lng: 180.0, name: 'International date line' },
+            ];
+            
+            output += '<table>';
+            output += '<tr><th>Location</th><th>Coordinates</th><th>Timezone</th><th>Adjustment</th><th>Seconds Detail</th></tr>';
+            
+            precisionCases.forEach(coords => {
+                const result = window.ExactaClock.getExactTime(coords);
+                const timezone = window.ExactaClock.getTimezone(coords);
+                
+                output += '<tr>';
+                output += `<td>${coords.name}</td>`;
+                output += `<td>${coords.lat}°, ${coords.lng}°</td>`;
+                output += `<td>${timezone.name}</td>`;
+                output += `<td class="adjustment">${formatAdjustment(result)}</td>`;
+                output += `<td>${result.adjustmentSeconds}s (${result.adjustmentMilliseconds}ms)</td>`;
+                output += '</tr>';
+            });
+            
+            output += '</table>';
+            
+            precisionDiv.innerHTML = output;
+        };
+        
+        // Run tests when page loads
+        window.addEventListener('load', () => {
+            runTests();
+            runPrecisionTests();
+        });
+    </script>
+</body>
+</html>
