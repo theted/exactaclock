@@ -9,8 +9,10 @@ A GPS-based time correction application that displays the "corrected" GMT time b
 - **🌍 Detailed Timezone Information**: Full timezone names and offset details
 - **⏰ Live Clock**: Updates every second with corrected time
 - **🎯 Precise Adjustments**: Shows minute-by-minute time corrections
+- **🗺️ Interactive Map**: OpenStreetMap integration with draggable location marker (no API key required)
 - **📱 Responsive Design**: Works on desktop and mobile devices
 - **🔒 Privacy-First**: All calculations done client-side, no data sent to servers
+- **🧪 Unit Tested**: Comprehensive test coverage with Vitest
 
 ## How It Works
 
@@ -20,12 +22,42 @@ The application uses the Haversine formula to calculate your distance to timezon
 
 ### Prerequisites
 - A modern web browser with GPS/location support
-- Node.js and npm (for local development server)
 - HTTPS connection (required for GPS access in most browsers)
+- **Option 1**: Node.js and npm (for local development)
+- **Option 2**: Docker and Docker Compose (for containerized setup)
 
 ### Running the Application
 
-1. **Clone or download** this repository:
+#### Method 1: Using Docker Compose (Recommended)
+
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd exactaclock
+   ```
+
+2. **Start with Docker Compose**:
+   ```bash
+   # Build and start the container
+   docker compose up
+   
+   # Or run in background
+   docker compose up -d
+   ```
+
+3. **Open your browser** and navigate to:
+   ```
+   http://localhost:3003
+   ```
+
+4. **Stop the container** (if running in background):
+   ```bash
+   docker compose down
+   ```
+
+#### Method 2: Using Node.js
+
+1. **Clone the repository**:
    ```bash
    git clone <repository-url>
    cd exactaclock
@@ -45,13 +77,16 @@ The application uses the Haversine formula to calculate your distance to timezon
 
 3. **Allow location access** when prompted by your browser (the browser will open automatically with `npm start`)
 
-4. **View your corrected time** - the app will show:
-   - Current exact GMT time with corrections
-   - Your precise coordinates
-   - Nearest major city
-   - Timezone information
-   - Time adjustment details
-   - Corrected local time
+#### What You'll See
+
+The app will display:
+- Current exact GMT time with corrections
+- Your precise coordinates  
+- Interactive OpenStreetMap with draggable location marker
+- GPS/Manual mode toggle for testing different locations
+- Timezone information
+- Time adjustment details
+- Corrected local time
 
 ### For HTTPS (Recommended)
 
@@ -76,13 +111,35 @@ Since GPS requires HTTPS in most browsers, you can:
 
 ## Running Tests 🧪
 
+The application includes both unit tests and a manual test page:
+
+### Unit Tests (Recommended)
+
+Run automated unit tests with Vitest:
+
+```bash
+# Run tests once
+npm run test:run
+
+# Run tests in watch mode
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests with UI
+npm run test:ui
+```
+
+### Manual Test Page
+
 The application includes a test page to verify calculations:
 
 1. **Start the web server** (as above)
 
 2. **Open the test page**:
    ```
-   http://localhost:8080/test.html
+   http://localhost:3003/test.html
    ```
 
 3. **View test results** for different locations:
@@ -100,10 +157,18 @@ exactaclock/
 ├── index.html              # Main application
 ├── test.html               # Test page for calculations
 ├── package.json            # Project configuration
+├── Dockerfile              # Docker container configuration
+├── docker-compose.yml      # Docker Compose setup
+├── .dockerignore           # Docker ignore file
+├── vitest.config.js        # Vitest testing configuration
 ├── README.md              # This file
-└── src/
-    ├── exactaclock.js     # Core timezone calculations
-    └── app.js             # GPS handling and UI logic
+├── src/
+│   ├── constants.js       # Timezone data constants
+│   ├── exactaclock.js     # Core timezone calculations
+│   ├── exactaclock.test.js # Unit tests
+│   └── app.js             # GPS handling and UI logic
+└── test/
+    └── setup.js           # Test environment setup
 ```
 
 ## API Reference 🔧

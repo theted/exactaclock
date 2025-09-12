@@ -183,6 +183,27 @@
             background: #45a049;
         }
 
+        .quick-locations {
+            display: flex;
+        }
+
+        .quick-loc-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            margin: 2px;
+        }
+
+        .quick-loc-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
         .description {
             font-size: 1rem;
             margin: 0 0 30px 0;
@@ -253,18 +274,31 @@
                         <button class="map-toggle active" id="gpsMode">📍 GPS Mode</button>
                         <button class="map-toggle" id="manualMode">🗺️ Manual Mode</button>
                     </div>
+                    <div class="map-instructions" style="text-align: center; font-size: 0.9rem; margin: 5px 0; opacity: 0.8;">
+                        <span id="gpsInstructions">GPS tracking your location automatically</span>
+                        <span id="manualInstructions" style="display: none;">Drag pin or click map to test different locations</span>
+                    </div>
                     <div id="map"></div>
                     <div class="coordinates-input" id="coordsInput" style="display: none;">
                         <input type="number" class="coord-input" id="latInput" placeholder="Latitude" step="0.0001">
                         <input type="number" class="coord-input" id="lngInput" placeholder="Longitude" step="0.0001">
                         <button class="apply-coords" id="applyCoords">Apply</button>
                     </div>
+                    <div class="quick-locations" id="quickLocations" style="display: none; text-align: center; margin: 10px 0; flex-wrap: wrap; justify-content: center; gap: 5px;">
+                        <button class="quick-loc-btn" data-lat="40.7128" data-lng="-74.0060">New York</button>
+                        <button class="quick-loc-btn" data-lat="51.5074" data-lng="-0.1278">London</button>
+                        <button class="quick-loc-btn" data-lat="35.6762" data-lng="139.6503">Tokyo</button>
+                        <button class="quick-loc-btn" data-lat="-33.8688" data-lng="151.2093">Sydney</button>
+                        <button class="quick-loc-btn" data-lat="0.0000" data-lng="0.0000">Null Island</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgw&callback=initMap"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="src/constants.js"></script>
     <script src="src/exactaclock.js"></script>
     <script src="src/app.js"></script>
 </body>

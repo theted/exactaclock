@@ -2,12 +2,16 @@
   "name": "exactaclock",
   "version": "1.0.0",
   "description": "GPS-based time correction application that displays corrected GMT time based on your exact coordinates",
+  "type": "module",
   "main": "index.html",
   "scripts": {
-    "start": "npx http-server . -p 8080 -o",
-    "serve": "npx http-server . -p 8080",
-    "test": "echo 'Open http://localhost:8080/test.html in your browser after running npm start'",
-    "dev": "npx http-server . -p 8080 -o",
+    "start": "npx http-server . -p 3003 -o --cors",
+    "serve": "npx http-server . -p 3003 --cors",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "dev": "npx http-server . -p 3003 -o --cors",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
     "format": "prettier --write src/**/*.js",
@@ -19,9 +23,20 @@
     "npm": ">=6.0.0"
   },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "jsdom": "^26.1.0",
+    "vitest": "^3.2.4"
   },
-  "keywords": ["timezone", "gps", "clock", "time", "location", "coordinates", "javascript", "html5"],
+  "keywords": [
+    "timezone",
+    "gps",
+    "clock",
+    "time",
+    "location",
+    "coordinates",
+    "javascript",
+    "html5"
+  ],
   "author": "",
   "license": "MIT",
   "homepage": "index.html",
