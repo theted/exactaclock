@@ -209,3 +209,20 @@ console.log(result);
 - Edge 79+
 
 GPS functionality requires HTTPS in most modern browsers.
+
+## Deployment (S3 + GitHub Actions) 🚢
+
+This project can be deployed as a static site to Amazon S3. A GitHub Actions workflow is included to sync files on every push to `main`.
+
+### Required GitHub Actions secrets
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `S3_BUCKET`
+- `CLOUDFRONT_DISTRIBUTION_ID` (optional, enables cache invalidation)
+
+### Notes
+
+- The workflow excludes development-only files like `node_modules`, Docker files, and test assets.
+- Ensure your S3 bucket is configured for static website hosting or served through CloudFront.
