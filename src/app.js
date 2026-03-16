@@ -221,7 +221,7 @@ class ExactaClockApp {
   };
 
   showMap = () => {
-    document.getElementById('mapContainer').style.display = 'block';
+    document.getElementById('mapContainer').style.display = 'flex';
   };
 
   hideLoading = () => {
