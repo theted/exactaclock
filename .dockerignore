@@ -4,9 +4,7 @@ npm-debug.log
 .gitignore
 README.md
 .env
-.nyc_output
 coverage
-.nyc_output
-.coverage
-.eslintrc.json
+eslint.config.js
 .prettierrc
+idea.md

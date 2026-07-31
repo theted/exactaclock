@@ -1,491 +1,457 @@
-// Main application logic
+import {
+  DEFAULT_LOCATION,
+  MAX_ADJUSTMENT_MINUTES,
+  PRESET_LOCATIONS,
+  ZONE_BOUNDARIES
+} from './constants.js';
+import { getExactTime } from './exactaclock.js';
+import {
+  formatAdjustment,
+  formatClock,
+  formatCoordinates,
+  formatDate,
+  formatDistance,
+  formatOffset
+} from './format.js';
+
+const $ = id => document.getElementById(id);
+
+// Movement smaller than this is GPS jitter, not travel (~110 m).
+const MOVEMENT_THRESHOLD_DEGREES = 0.001;
+const TICK_MS = 250;
+const LOCATION_TIMEOUT_MS = 10000;
+
+const DIAL = { cx: 50, cy: 50, radius: 40, sweepDegrees: 120 };
+
+// Point on the gauge for a signed ratio in [-1, 1], measured from 12 o'clock.
+const dialPoint = ratio => {
+  const angle = (ratio * DIAL.sweepDegrees * Math.PI) / 180;
+  return {
+    x: DIAL.cx + DIAL.radius * Math.sin(angle),
+    y: DIAL.cy - DIAL.radius * Math.cos(angle)
+  };
+};
+
+const dialArcPath = ratio => {
+  const clamped = Math.max(-1, Math.min(1, ratio));
+  if (Math.abs(clamped) < 0.005) return '';
+  const start = dialPoint(0);
+  const end = dialPoint(clamped);
+  const sweepFlag = clamped > 0 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${DIAL.radius} ${DIAL.radius} 0 0 ${sweepFlag} ${end.x} ${end.y}`;
+};
+
 class ExactaClockApp {
   constructor() {
-    this.userLocation = null;
-    this.clockInterval = null;
-    this.locationTrackingId = null;
-    this.trackingInterval = 30000; // 30 seconds default
-    this.movementThreshold = 0.001; // ~100 meters in degrees
-    this.isTracking = false;
+    this.location = DEFAULT_LOCATION;
+    this.hasFix = false;
+    this.isManualMode = false;
+    this.showMeridians = true;
+    this.watchId = null;
+    this.tickId = null;
+    this.requestTimeoutId = null;
+    this.lastRendered = null;
     this.map = null;
     this.marker = null;
-    this.isManualMode = false;
-    this.init();
+    this.meridianLayer = null;
+    this.zoneBand = null;
   }
 
   init = () => {
+    this.renderPresets();
     this.bindEvents();
+    this.initMap();
+    this.startClock();
     this.requestLocation();
   };
 
   bindEvents = () => {
-    const locationBtn = document.getElementById('locationBtn');
-    locationBtn.addEventListener('click', this.requestLocation);
+    $('locationBtn').addEventListener('click', this.requestLocation);
+    $('skipLocationBtn').addEventListener('click', () => {
+      clearTimeout(this.requestTimeoutId);
+      this.hidePermissionPrompt();
+      this.switchToManualMode();
+      this.setStatus(
+        'Exploring manually. Drag the pin or click anywhere on the map.'
+      );
+    });
+    $('gpsMode').addEventListener('click', this.switchToGpsMode);
+    $('manualMode').addEventListener('click', this.switchToManualMode);
+    $('applyCoords').addEventListener('click', this.applyTypedCoordinates);
+    $('toggleMeridians').addEventListener('click', this.toggleMeridians);
 
-    // Map controls
-    const gpsMode = document.getElementById('gpsMode');
-    const manualMode = document.getElementById('manualMode');
-    const applyCoords = document.getElementById('applyCoords');
-
-    gpsMode.addEventListener('click', this.switchToGPSMode);
-    manualMode.addEventListener('click', this.switchToManualMode);
-    applyCoords.addEventListener('click', this.applyManualCoordinates);
-
-    // Quick location buttons
-    const quickLocButtons = document.querySelectorAll('.quick-loc-btn');
-    quickLocButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        const lat = parseFloat(e.target.getAttribute('data-lat'));
-        const lng = parseFloat(e.target.getAttribute('data-lng'));
-        this.jumpToLocation(lat, lng);
+    // Enter in either coordinate box applies the pair.
+    ['latInput', 'lngInput'].forEach(id => {
+      $(id).addEventListener('keydown', event => {
+        if (event.key === 'Enter') this.applyTypedCoordinates();
       });
     });
+
+    window.addEventListener('beforeunload', this.stopTracking);
   };
+
+  renderPresets = () => {
+    const container = $('presets');
+    PRESET_LOCATIONS.forEach(({ label, lat, lng }) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'button button--ghost';
+      button.textContent = label;
+      button.addEventListener('click', () => {
+        this.switchToManualMode();
+        this.setLocation({ lat, lng }, { recenter: true });
+      });
+      container.append(button);
+    });
+  };
+
+  /* ── Location ─────────────────────────────────────────────────────── */
 
   requestLocation = () => {
     if (!navigator.geolocation) {
-      this.showError('Geolocation is not supported by this browser.');
+      this.setStatus(
+        'This browser has no geolocation support — pick a spot on the map instead.',
+        'error'
+      );
+      this.switchToManualMode();
       return;
     }
 
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    };
+    this.setStatus('Requesting your location…');
+
+    // Some browsers never invoke either callback when the permission prompt is
+    // suppressed, ignoring the `timeout` option entirely. Without this
+    // watchdog the app would sit on "Requesting…" forever with no way out.
+    clearTimeout(this.requestTimeoutId);
+    this.requestTimeoutId = setTimeout(
+      () =>
+        this.fallBackToManual('Your location is taking too long to arrive.'),
+      LOCATION_TIMEOUT_MS + 2000
+    );
 
     navigator.geolocation.getCurrentPosition(
-      this.onLocationSuccess,
+      position => {
+        clearTimeout(this.requestTimeoutId);
+        this.hidePermissionPrompt();
+        this.hasFix = true;
+        this.isManualMode = false;
+        this.syncModeButtons();
+        this.setLocation(toCoordinates(position), { recenter: true });
+        this.setStatus('Live GPS fix. The clock follows you as you move.');
+        this.startTracking();
+      },
       this.onLocationError,
-      options
+      {
+        enableHighAccuracy: true,
+        timeout: LOCATION_TIMEOUT_MS,
+        maximumAge: 0
+      }
     );
-  };
-
-  onLocationSuccess = position => {
-    const newLocation = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude
-    };
-
-    // Check if location has changed significantly
-    if (this.userLocation && this.hasLocationChanged(newLocation)) {
-      this.showLocationUpdateNotice();
-    }
-
-    this.userLocation = newLocation;
-    this.hideError();
-    this.hideLocationButton();
-    this.showClock();
-    this.showMap();
-    this.startClock();
-    this.startLocationTracking();
-    this.initializeMap();
   };
 
   onLocationError = error => {
-    let errorMessage = 'Unable to retrieve your location. ';
-
-    switch (error.code) {
-    case error.PERMISSION_DENIED:
-      errorMessage +=
-          'Location access was denied. Please click the button below to try again.';
-      this.showLocationButton();
-      break;
-    case error.POSITION_UNAVAILABLE:
-      errorMessage += 'Location information is unavailable.';
-      break;
-    case error.TIMEOUT:
-      errorMessage += 'Location request timed out. Please try again.';
-      this.showLocationButton();
-      break;
-    default:
-      errorMessage += 'An unknown error occurred.';
-      break;
-    }
-
-    this.showError(errorMessage);
-    this.hideLoading();
-  };
-
-  startClock = () => {
-    if (this.clockInterval) {
-      clearInterval(this.clockInterval);
-    }
-
-    // Update immediately
-    this.updateClock();
-
-    // Then update every second
-    this.clockInterval = setInterval(this.updateClock, 1000);
-  };
-
-  updateClock = () => {
-    if (!this.userLocation) return;
-
-    const result = window.ExactaClock.getExactTime(this.userLocation);
-
-    // Get corrected time and apply local timezone offset
-    const exactTime = result.exactTime || new Date();
-    const localOffset = window.ExactaClock.getTimezone(
-      this.userLocation
-    ).offset;
-    const correctedLocalTime = new Date(
-      exactTime.getTime() + localOffset * 60 * 60 * 1000
-    );
-
-    // Format corrected local time (main display)
-    const correctedTimeString = correctedLocalTime.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-
-    // Format GMT time for reference
-    const gmtTimeString = exactTime.toLocaleTimeString('en-US', {
-      timeZone: 'UTC',
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-
-    // Calculate normal local time (standard timezone without corrections)
-    const now = new Date();
-    const normalLocalTime = new Date(
-      now.getTime() + localOffset * 60 * 60 * 1000
-    );
-    const normalTimeString = normalLocalTime.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-
-    // Format adjustment display with seconds precision
-    let adjustmentText;
-    if (result.adjustmentSecondsTotal === 0) {
-      adjustmentText = 'No adjustment needed';
-    } else if (Math.abs(result.adjustmentSecondsTotal) < 60) {
-      // Show seconds when less than 1 minute
-      const seconds = Math.abs(result.adjustmentSecondsTotal);
-      adjustmentText = `${seconds} second${seconds !== 1 ? 's' : ''} ${result.adjustmentSecondsTotal > 0 ? 'ahead' : 'behind'}`;
-    } else {
-      // Show minutes and seconds when over 1 minute
-      const totalSeconds = Math.abs(result.adjustmentSecondsTotal);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      let text = `${minutes} minute${minutes !== 1 ? 's' : ''}`;
-      if (seconds > 0) {
-        text += `, ${seconds} second${seconds !== 1 ? 's' : ''}`;
-      }
-      text += ` ${result.adjustmentSecondsTotal > 0 ? 'ahead' : 'behind'}`;
-      adjustmentText = text;
-    }
-
-    // Update DOM elements
-    document.getElementById('exactTime').textContent = correctedTimeString;
-    document.getElementById('coordinates').textContent =
-      `${this.userLocation.lat.toFixed(4)}°, ${this.userLocation.lng.toFixed(4)}°`;
-    document.getElementById('timezone').textContent =
-      result.currentTimezone || 'UTC+0';
-    document.getElementById('timezoneFull').textContent =
-      result.timezoneFull || 'Greenwich Mean Time';
-    document.getElementById('adjustment').textContent = adjustmentText;
-    document.getElementById('normalTime').textContent = normalTimeString;
-    document.getElementById('localTime').textContent = gmtTimeString + ' GMT';
-  };
-
-  showError = message => {
-    const errorEl = document.getElementById('error');
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-  };
-
-  hideError = () => {
-    document.getElementById('error').style.display = 'none';
-  };
-
-  showLocationButton = () => {
-    document.getElementById('locationBtn').style.display = 'inline-block';
-    this.hideLoading();
-  };
-
-  hideLocationButton = () => {
-    document.getElementById('locationBtn').style.display = 'none';
-  };
-
-  showClock = () => {
-    document.getElementById('clock').style.display = 'block';
-    this.hideLoading();
-  };
-
-  showMap = () => {
-    document.getElementById('mapContainer').style.display = 'flex';
-  };
-
-  hideLoading = () => {
-    const loadingEl = document.querySelector('.loading');
-    if (loadingEl) {
-      loadingEl.style.display = 'none';
-    }
-  };
-
-  // Start continuous location tracking
-  startLocationTracking = () => {
-    if (this.isTracking) return;
-    
-    this.isTracking = true;
-    
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 5000
+    const reasons = {
+      [error.PERMISSION_DENIED]: 'Location access was denied.',
+      [error.POSITION_UNAVAILABLE]: 'Your location is currently unavailable.',
+      [error.TIMEOUT]: 'The location request timed out.'
     };
-
-    // Use watchPosition for continuous tracking
-    if (navigator.geolocation) {
-      this.locationTrackingId = navigator.geolocation.watchPosition(
-        this.onLocationUpdate,
-        this.onLocationTrackingError,
-        options
-      );
-    }
+    this.fallBackToManual(
+      reasons[error.code] ?? 'Your location could not be read.'
+    );
   };
 
-  // Stop location tracking
-  stopLocationTracking = () => {
-    if (this.locationTrackingId && navigator.geolocation) {
-      navigator.geolocation.clearWatch(this.locationTrackingId);
-      this.locationTrackingId = null;
-      this.isTracking = false;
-    }
+  // Always leaves the app usable: the clock keeps running on the fallback
+  // location and the user can pick anywhere on the map.
+  fallBackToManual = reason => {
+    clearTimeout(this.requestTimeoutId);
+    this.setStatus(
+      `${reason} Showing the Royal Observatory in Greenwich — pick anywhere on the map, or try again.`,
+      'error'
+    );
+    this.showPermissionPrompt();
+    this.switchToManualMode();
   };
 
-  // Handle location updates during tracking
-  onLocationUpdate = position => {
-    const newLocation = {
-      lat: position.coords.latitude,
-      lng: position.coords.longitude
-    };
-
-    // Check if location has changed significantly
-    if (this.hasLocationChanged(newLocation)) {
-      this.userLocation = newLocation;
-      this.showLocationUpdateNotice();
-      
-      // Update map marker if in GPS mode
-      if (!this.isManualMode && this.marker) {
-        this.marker.setLatLng([newLocation.lat, newLocation.lng]);
-        this.map.setView([newLocation.lat, newLocation.lng]);
-      }
-      
-      // Clock will update automatically on next tick
-    }
-  };
-
-  // Handle location tracking errors
-  onLocationTrackingError = error => {
-    // Don't show errors for tracking failures unless it's permission denied
-    if (error.code === error.PERMISSION_DENIED) {
-      this.stopLocationTracking();
-      this.showError('Location tracking disabled. Click the button to re-enable.');
-      this.showLocationButton();
-    }
-  };
-
-  // Check if location has changed beyond threshold
-  hasLocationChanged = newLocation => {
-    if (!this.userLocation) return true;
-    
-    const latDiff = Math.abs(newLocation.lat - this.userLocation.lat);
-    const lngDiff = Math.abs(newLocation.lng - this.userLocation.lng);
-    
-    return latDiff > this.movementThreshold || lngDiff > this.movementThreshold;
-  };
-
-  // Show location update notification
-  showLocationUpdateNotice = () => {
-    const noticeEl = document.getElementById('locationUpdate');
-    if (noticeEl && this.userLocation) {
-      noticeEl.style.display = 'block';
-      noticeEl.innerHTML = `📍 Location updated to ${this.userLocation.lat.toFixed(4)}°, ${this.userLocation.lng.toFixed(4)}° - recalculating time...`;
-      
-      // Hide notice after 3 seconds
-      setTimeout(() => {
-        noticeEl.style.display = 'none';
-      }, 3000);
-    }
-  };
-
-  // Initialize Leaflet Map
-  initializeMap = () => {
-    if (!this.userLocation || !window.L) {
-      // Retry after a short delay if Leaflet isn't loaded yet
-      setTimeout(() => {
-        if (window.L) {
-          this.initializeMap();
+  startTracking = () => {
+    if (this.watchId !== null || !navigator.geolocation) return;
+    this.watchId = navigator.geolocation.watchPosition(
+      position => {
+        const next = toCoordinates(position);
+        if (this.isManualMode || !this.hasMoved(next)) return;
+        this.hasFix = true;
+        this.setLocation(next, { recenter: true });
+      },
+      error => {
+        if (error.code === error.PERMISSION_DENIED) {
+          this.stopTracking();
+          this.onLocationError(error);
         }
-      }, 500);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+  };
+
+  stopTracking = () => {
+    if (this.watchId === null) return;
+    navigator.geolocation.clearWatch(this.watchId);
+    this.watchId = null;
+  };
+
+  hasMoved = ({ lat, lng }) =>
+    Math.abs(lat - this.location.lat) > MOVEMENT_THRESHOLD_DEGREES ||
+    Math.abs(lng - this.location.lng) > MOVEMENT_THRESHOLD_DEGREES;
+
+  setLocation = (coordinates, { recenter = false } = {}) => {
+    this.location = coordinates;
+    this.syncMarker(recenter);
+    this.syncCoordinateInputs();
+    this.render();
+  };
+
+  /* ── Modes ────────────────────────────────────────────────────────── */
+
+  switchToGpsMode = () => {
+    this.isManualMode = false;
+    this.syncModeButtons();
+    this.marker?.dragging.disable();
+    this.requestLocation();
+  };
+
+  switchToManualMode = () => {
+    clearTimeout(this.requestTimeoutId);
+    this.isManualMode = true;
+    this.syncModeButtons();
+    this.marker?.dragging.enable();
+    this.stopTracking();
+    this.syncCoordinateInputs();
+  };
+
+  syncModeButtons = () => {
+    const manual = this.isManualMode;
+    $('gpsMode').setAttribute('aria-pressed', String(!manual));
+    $('manualMode').setAttribute('aria-pressed', String(manual));
+    $('manualControls').hidden = !manual;
+    $('mapHint').textContent = manual
+      ? 'Drag the pin, click the map, or type coordinates to compare locations.'
+      : 'Tracking your location automatically.';
+  };
+
+  syncCoordinateInputs = () => {
+    $('latInput').value = this.location.lat.toFixed(4);
+    $('lngInput').value = this.location.lng.toFixed(4);
+  };
+
+  applyTypedCoordinates = () => {
+    const lat = Number.parseFloat($('latInput').value);
+    const lng = Number.parseFloat($('lngInput').value);
+    const error = $('coordsError');
+
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      error.textContent = 'Latitude must be between -90 and 90.';
+      $('latInput').focus();
+      return;
+    }
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+      error.textContent = 'Longitude must be between -180 and 180.';
+      $('lngInput').focus();
       return;
     }
 
-    // Initialize map
-    this.map = L.map('map').setView([this.userLocation.lat, this.userLocation.lng], 10);
+    error.textContent = '';
+    this.setLocation({ lat, lng }, { recenter: true });
+  };
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  /* ── Map ──────────────────────────────────────────────────────────── */
+
+  initMap = () => {
+    if (this.map) return;
+    if (!window.L) {
+      $('mapHint').textContent =
+        'The map library could not be loaded — the clock below still works.';
+      return;
+    }
+
+    this.map = L.map('map', { worldCopyJump: true }).setView(
+      [this.location.lat, this.location.lng],
+      5
+    );
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(this.map);
 
-    // Add draggable marker (always create as draggable, we'll control it via enable/disable)
-    this.marker = L.marker([this.userLocation.lat, this.userLocation.lng], {
+    this.meridianLayer = L.layerGroup().addTo(this.map);
+    this.drawMeridians();
+
+    this.marker = L.marker([this.location.lat, this.location.lng], {
       draggable: true,
-      title: 'Location marker'
+      keyboard: true,
+      title: 'Selected location'
     }).addTo(this.map);
+    this.marker.dragging.disable();
 
-    // Disable dragging initially if in GPS mode
-    if (!this.isManualMode) {
-      this.marker.dragging.disable();
-    }
-
-    // Handle marker drag - always listen, but only act in manual mode
-    this.marker.on('dragend', (event) => {
-      console.log('Marker drag detected, manual mode:', this.isManualMode);
-      if (this.isManualMode) {
-        const newPos = event.target.getLatLng();
-        console.log('Updating location from drag:', newPos.lat, newPos.lng);
-        this.updateLocationFromMap(newPos.lat, newPos.lng);
-      }
+    this.marker.on('dragend', event => {
+      if (!this.isManualMode) return;
+      const { lat, lng } = event.target.getLatLng();
+      this.setLocation({ lat, lng });
     });
 
-    // Handle map clicks - always listen, but only act in manual mode
-    this.map.on('click', (event) => {
-      console.log('Map click detected, manual mode:', this.isManualMode);
-      if (this.isManualMode) {
-        const newPos = event.latlng;
-        console.log('Updating location from click:', newPos.lat, newPos.lng);
-        this.marker.setLatLng(newPos);
-        this.updateLocationFromMap(newPos.lat, newPos.lng);
-      }
+    this.map.on('click', event => {
+      if (!this.isManualMode) return;
+      const { lat, lng } = event.latlng;
+      this.setLocation({ lat, lng }, { recenter: false });
     });
   };
 
-  // Update location from map interaction
-  updateLocationFromMap = (lat, lng) => {
-    console.log('updateLocationFromMap called with:', lat, lng);
-    this.userLocation = { lat, lng };
-    this.showLocationUpdateNotice();
-    
-    // Update input fields
-    document.getElementById('latInput').value = lat.toFixed(4);
-    document.getElementById('lngInput').value = lng.toFixed(4);
-    
-    // Immediately update clock calculations with new location
-    console.log('Calling updateClock...');
-    this.updateClock();
-    console.log('updateClock completed');
+  syncMarker = recenter => {
+    if (!this.marker) return;
+    const position = [this.location.lat, this.location.lng];
+    this.marker.setLatLng(position);
+    if (recenter) this.map.setView(position, this.map.getZoom());
+    this.drawZoneBand();
   };
 
-  // Switch to GPS mode
-  switchToGPSMode = () => {
-    this.isManualMode = false;
-    document.getElementById('gpsMode').classList.add('active');
-    document.getElementById('manualMode').classList.remove('active');
-    document.getElementById('coordsInput').style.display = 'none';
-    document.getElementById('quickLocations').style.display = 'none';
-    
-    // Update instructions
-    document.getElementById('gpsInstructions').style.display = 'inline';
-    document.getElementById('manualInstructions').style.display = 'none';
-    
-    if (this.marker) {
-      this.marker.dragging.disable();
-    }
-    
-    this.startLocationTracking();
-    this.requestLocation();
+  drawMeridians = () => {
+    if (!this.meridianLayer) return;
+    this.meridianLayer.clearLayers();
+    this.zoneBand = null;
+    if (!this.showMeridians) return;
+
+    ZONE_BOUNDARIES.forEach(lng => {
+      L.polyline(
+        [
+          [-85, lng],
+          [85, lng]
+        ],
+        {
+          color: '#38bdc8',
+          weight: 1,
+          opacity: 0.45,
+          dashArray: '4 6',
+          interactive: false
+        }
+      ).addTo(this.meridianLayer);
+    });
+
+    this.drawZoneBand();
   };
 
-  // Switch to manual mode
-  switchToManualMode = () => {
-    this.isManualMode = true;
-    document.getElementById('gpsMode').classList.remove('active');
-    document.getElementById('manualMode').classList.add('active');
-    document.getElementById('coordsInput').style.display = 'flex';
-    document.getElementById('quickLocations').style.display = 'flex';
-    
-    // Update instructions
-    document.getElementById('gpsInstructions').style.display = 'none';
-    document.getElementById('manualInstructions').style.display = 'inline';
-    
-    if (this.marker) {
-      this.marker.dragging.enable();
-    }
-    
-    this.stopLocationTracking();
-    
-    // Populate input fields with current location
-    if (this.userLocation) {
-      document.getElementById('latInput').value = this.userLocation.lat.toFixed(4);
-      document.getElementById('lngInput').value = this.userLocation.lng.toFixed(4);
-    }
+  // Shades the nominal zone the pin sits in and marks its central meridian —
+  // the line where solar time and clock time agree exactly.
+  drawZoneBand = () => {
+    if (!this.meridianLayer || !this.showMeridians) return;
+    if (this.zoneBand) this.meridianLayer.removeLayer(this.zoneBand);
+
+    const { timezone } = getExactTime(this.location);
+    this.zoneBand = L.layerGroup([
+      L.rectangle(
+        [
+          [-85, timezone.west],
+          [85, timezone.east]
+        ],
+        {
+          color: '#38bdc8',
+          weight: 0,
+          fillOpacity: 0.08,
+          interactive: false
+        }
+      ),
+      L.polyline(
+        [
+          [-85, timezone.center],
+          [85, timezone.center]
+        ],
+        { color: '#38bdc8', weight: 2, opacity: 0.8, interactive: false }
+      )
+    ]).addTo(this.meridianLayer);
   };
 
-  // Apply manual coordinates
-  applyManualCoordinates = () => {
-    const lat = parseFloat(document.getElementById('latInput').value);
-    const lng = parseFloat(document.getElementById('lngInput').value);
-    
-    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      alert('Please enter valid coordinates (lat: -90 to 90, lng: -180 to 180)');
-      return;
-    }
-
-    this.userLocation = { lat, lng };
-    
-    if (this.marker) {
-      this.marker.setLatLng([lat, lng]);
-      this.map.setView([lat, lng]);
-    }
-    
-    this.showLocationUpdateNotice();
-    
-    // Immediately update clock calculations with new location
-    this.updateClock();
+  toggleMeridians = () => {
+    this.showMeridians = !this.showMeridians;
+    $('toggleMeridians').setAttribute(
+      'aria-pressed',
+      String(this.showMeridians)
+    );
+    this.zoneBand = null;
+    this.drawMeridians();
   };
 
-  // Jump to a specific location (for quick location buttons)
-  jumpToLocation = (lat, lng) => {
-    if (!this.isManualMode) {
-      this.switchToManualMode();
-    }
-    
-    this.userLocation = { lat, lng };
-    
-    if (this.marker) {
-      this.marker.setLatLng([lat, lng]);
-      this.map.setView([lat, lng], 10);
-    }
-    
-    // Update input fields
-    document.getElementById('latInput').value = lat.toFixed(4);
-    document.getElementById('lngInput').value = lng.toFixed(4);
-    
-    this.showLocationUpdateNotice();
-    this.updateClock();
+  /* ── Clock ────────────────────────────────────────────────────────── */
+
+  startClock = () => {
+    this.render();
+    this.tickId = setInterval(this.render, TICK_MS);
+  };
+
+  render = () => {
+    const result = getExactTime(this.location);
+    const exact = formatClock(result.exactTime);
+
+    // Re-paint the whole panel only when the visible second actually changes.
+    const signature = `${exact}|${result.coordinates.lat}|${result.coordinates.lng}`;
+    if (signature === this.lastRendered) return;
+    this.lastRendered = signature;
+
+    $('clock').hidden = false;
+    $('dial').hidden = false;
+    $('facts').hidden = false;
+
+    $('exactTime').textContent = exact;
+    $('exactDate').textContent = formatDate(result.exactTime);
+
+    const city = result.nearestCity;
+    $('nearestCity').textContent =
+      `${formatDistance(city.distanceKm)} from ${city.name}`;
+
+    const { adjustmentMinutes, adjustmentRatio } = result;
+    const direction =
+      Math.abs(adjustmentMinutes) < 0.5 / 60
+        ? 'level'
+        : adjustmentMinutes > 0
+          ? 'ahead'
+          : 'behind';
+
+    $('dial').dataset.direction = direction;
+    $('dialArc').setAttribute('d', dialArcPath(adjustmentRatio));
+    $('dialReadout').textContent = formatAdjustment(adjustmentMinutes);
+    $('dialLabel').textContent =
+      direction === 'level'
+        ? `On the ${result.timezone.name} central meridian — clock time is already solar time.`
+        : `${direction === 'ahead' ? 'Ahead of' : 'Behind'} ${result.timezone.name}, out of a possible ${MAX_ADJUSTMENT_MINUTES} min.`;
+
+    $('standardTime').textContent = formatClock(result.standardTime);
+    $('utcTime').textContent = formatClock(result.now);
+    $('timezone').textContent = result.timezone.name;
+    $('timezoneFull').textContent = result.timezone.fullName;
+    $('solarOffset').textContent = formatOffset(result.solarOffsetMinutes);
+    $('coordinates').textContent = formatCoordinates(result.coordinates);
+  };
+
+  /* ── Status ───────────────────────────────────────────────────────── */
+
+  setStatus = (message, tone = 'info') => {
+    const status = $('status');
+    status.hidden = false;
+    status.dataset.tone = tone;
+    $('statusMessage').textContent = message;
+  };
+
+  showPermissionPrompt = () => {
+    $('permissionPrompt').hidden = false;
+  };
+
+  hidePermissionPrompt = () => {
+    $('permissionPrompt').hidden = true;
   };
 }
 
-// Leaflet map initialization is handled directly in the initializeMap method
-
-// Initialize the application when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  const app = new ExactaClockApp();
-  
-  // Cleanup location tracking on page unload
-  window.addEventListener('beforeunload', () => {
-    app.stopLocationTracking();
-  });
+const toCoordinates = position => ({
+  lat: position.coords.latitude,
+  lng: position.coords.longitude
 });
+
+const app = new ExactaClockApp();
+app.init();
+
+export default app;
