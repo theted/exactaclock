@@ -1,422 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exactaclock - Corrected GMT Time</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exactaclock — sun-accurate local time</title>
+    <meta
+      name="description"
+      content="Exactaclock shows the true solar time at your exact coordinates, instead of rounding it to the nearest timezone."
+    />
+    <meta name="theme-color" content="#131a24" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%2338bdc8' stroke-width='2.5'/%3E%3Cpath d='M16 8v8.6l5.5 3.2' fill='none' stroke='%2338bdc8' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ── Clock panel ─────────────────────────────────────────────── -->
+      <main class="panel panel--primary">
+        <header class="masthead">
+          <h1 class="masthead__title">
+            <svg class="masthead__mark" viewBox="0 0 32 32" aria-hidden="true">
+              <circle
+                cx="16"
+                cy="16"
+                r="13"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              />
+              <path
+                d="M16 8v8.6l5.5 3.2"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            Exactaclock
+          </h1>
+          <p class="masthead__tagline">
+            Timezones round the sun off to the nearest hour. This clock does
+            not — it reads the true solar time at your exact longitude, drifting
+            up to 30&nbsp;minutes from the zone on the wall.
+          </p>
+        </header>
 
-        @keyframes backgroundSway {
-            0%   { background-position: 0% 50%; }
-            50%  { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(-45deg,
-                oklch(10% 0.07 282),
-                oklch(8%  0.04 256),
-                oklch(13% 0.09 302),
-                oklch(9%  0.06 268),
-                oklch(11% 0.08 290)
-            );
-            background-size: 400% 400%;
-            animation: backgroundSway 22s ease infinite;
-            color: oklch(92% 0.02 268);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 20px;
-        }
-
-        /* ── Two-column layout ─────────────────────────── */
-        .container {
-            width: 100%;
-            max-width: 1440px;
-            display: grid;
-            grid-template-columns: 400px 1fr;
-            gap: 20px;
-            align-items: start;
-        }
-
-        /* ── Left panel ────────────────────────────────── */
-        .left-panel {
-            text-align: center;
-            background: oklch(20% 0.05 278 / 0.38);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid oklch(48% 0.09 280 / 0.22);
-            border-radius: 20px;
-            padding: 36px 28px;
-            box-shadow:
-                0 8px 40px oklch(5% 0.04 272 / 0.65),
-                inset 0 1px 0 oklch(62% 0.07 280 / 0.12);
-        }
-
-        /* ── Right panel ───────────────────────────────── */
-        .right-panel {
-            position: sticky;
-            top: 20px;
-            height: calc(100vh - 40px);
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ── Typography ────────────────────────────────── */
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 18px;
-            letter-spacing: 1px;
-            color: oklch(96% 0.05 282);
-            text-shadow: 0 2px 24px oklch(52% 0.18 285 / 0.55);
-        }
-
-        .description {
-            font-size: 0.92rem;
-            margin-bottom: 24px;
-            line-height: 1.65;
-            color: oklch(76% 0.05 272);
-        }
-
-        /* ── Clock display ─────────────────────────────── */
-        .time-display {
-            font-size: 4rem;
-            font-weight: bold;
-            margin: 22px 0;
-            letter-spacing: 3px;
-            color: oklch(97% 0.04 282);
-            text-shadow:
-                0 0 32px oklch(65% 0.20 285 / 0.65),
-                0 2px 6px oklch(5% 0.04 272 / 0.9);
-        }
-
-        /* ── Info items ────────────────────────────────── */
-        .location-info {
-            margin: 14px 0;
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        .info-item {
-            margin: 7px 0;
-            padding: 10px 14px;
-            background: oklch(26% 0.06 278 / 0.42);
-            border-radius: 10px;
-            border: 1px solid oklch(42% 0.07 278 / 0.2);
-            text-align: left;
-        }
-
-        .info-item.highlighted {
-            background: oklch(30% 0.09 280 / 0.55);
-            border-color: oklch(52% 0.12 282 / 0.35);
-        }
-
-        /* ── Loading / Error ───────────────────────────── */
-        .loading {
-            font-size: 1.15rem;
-            color: oklch(74% 0.08 280);
-            animation: pulse 1.5s ease-in-out infinite alternate;
-        }
-
-        @keyframes pulse {
-            from { opacity: 0.45; }
-            to   { opacity: 1; }
-        }
-
-        .error {
-            color: oklch(68% 0.22 26);
-            font-size: 1.05rem;
-            margin: 20px 0;
-        }
-
-        /* ── Buttons ───────────────────────────────────── */
-        .permission-button {
-            background: oklch(22% 0.07 280 / 0.52);
-            color: oklch(93% 0.02 268);
-            border: 1.5px solid oklch(55% 0.11 280 / 0.6);
-            padding: 14px 28px;
-            border-radius: 25px;
-            font-size: 1.05rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .permission-button:hover {
-            background: oklch(62% 0.15 280);
-            color: oklch(10% 0.04 278);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 22px oklch(52% 0.16 280 / 0.45);
-        }
-
-        /* ── Location update notice ────────────────────── */
-        .location-update {
-            background: oklch(22% 0.06 278 / 0.52);
-            color: oklch(90% 0.02 268);
-            padding: 10px 16px;
-            border-radius: 12px;
-            margin: 12px 0;
-            font-size: 0.88rem;
-            animation: slideIn 0.3s ease-out;
-            border-left: 4px solid oklch(62% 0.15 152);
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ── Map container (right panel) ───────────────── */
-        .map-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: oklch(18% 0.05 278 / 0.42);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid oklch(48% 0.09 280 / 0.22);
-            border-radius: 20px;
-            padding: 16px;
-            box-shadow:
-                0 8px 40px oklch(5% 0.04 272 / 0.65),
-                inset 0 1px 0 oklch(62% 0.07 280 / 0.12);
-            overflow: hidden;
-        }
-
-        #map {
-            flex: 1;
-            width: 100%;
-            min-height: 300px;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        /* ── Map controls ──────────────────────────────── */
-        .map-controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-
-        .map-toggle {
-            background: oklch(22% 0.07 280 / 0.52);
-            color: oklch(90% 0.02 268);
-            border: 1.5px solid oklch(50% 0.09 280 / 0.5);
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.88rem;
-            cursor: pointer;
-            transition: all 0.28s ease;
-        }
-
-        .map-toggle:hover,
-        .map-toggle.active {
-            background: oklch(54% 0.15 282);
-            color: oklch(10% 0.04 278);
-            border-color: oklch(54% 0.15 282);
-            box-shadow: 0 2px 14px oklch(50% 0.16 282 / 0.45);
-        }
-
-        .map-instructions {
-            font-size: 0.84rem;
-            text-align: center;
-            margin: 0 0 8px 0;
-            color: oklch(68% 0.06 272);
-        }
-
-        /* ── Coordinate inputs ─────────────────────────── */
-        .coordinates-input {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: 8px 0;
-            flex-wrap: wrap;
-        }
-
-        .coord-input {
-            background: oklch(22% 0.06 278 / 0.52);
-            border: 1px solid oklch(45% 0.08 278 / 0.42);
-            color: oklch(92% 0.02 268);
-            padding: 7px 12px;
-            border-radius: 10px;
-            font-size: 0.88rem;
-            width: 118px;
-            text-align: center;
-        }
-
-        .coord-input::placeholder {
-            color: oklch(58% 0.06 270);
-        }
-
-        .apply-coords {
-            background: oklch(42% 0.14 152);
-            color: oklch(97% 0.02 152);
-            border: none;
-            padding: 7px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 0.88rem;
-            transition: background 0.28s ease;
-        }
-
-        .apply-coords:hover {
-            background: oklch(50% 0.16 152);
-        }
-
-        /* ── Quick location buttons ────────────────────── */
-        .quick-locations {
-            display: flex;
-            margin: 6px 0;
-        }
-
-        .quick-loc-btn {
-            background: oklch(20% 0.06 278 / 0.46);
-            color: oklch(86% 0.03 272);
-            border: 1px solid oklch(42% 0.07 278 / 0.3);
-            padding: 5px 12px;
-            border-radius: 14px;
-            cursor: pointer;
-            font-size: 0.78rem;
-            transition: all 0.25s ease;
-            margin: 2px;
-        }
-
-        .quick-loc-btn:hover {
-            background: oklch(32% 0.10 280 / 0.62);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 10px oklch(40% 0.10 280 / 0.35);
-        }
-
-        /* ── Responsive: single column on small screens ── */
-        @media (max-width: 1020px) {
-            body {
-                align-items: flex-start;
-            }
-            .container {
-                grid-template-columns: 1fr;
-                max-width: 640px;
-                margin: 0 auto;
-            }
-            .right-panel {
-                position: static;
-                height: auto;
-            }
-            .map-container {
-                height: 380px;
-            }
-            #map {
-                min-height: 260px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .time-display {
-                font-size: 2.7rem;
-            }
-            h1 {
-                font-size: 2rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 12px;
-            }
-            .left-panel {
-                padding: 24px 16px;
-            }
-            .time-display {
-                font-size: 2.2rem;
-            }
-            h1 {
-                font-size: 1.75rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Left column: header + clock info -->
-        <div class="left-panel">
-            <h1>Exactaclock</h1>
-            <div class="description">
-                This clock displays "corrected" local time based on your exact GPS coordinates.
-                Instead of sharp timezone jumps, time adjusts gradually as you move between timezone boundaries.
-                If you're exactly between two timezones, the time shifts by up to 30 minutes from standard time.
-            </div>
-            <div id="app">
-                <div class="loading">Requesting location permission...</div>
-                <button class="permission-button" id="locationBtn" style="display: none;">
-                    Enable Location Access
-                </button>
-                <div class="error" id="error" style="display: none;"></div>
-                <div class="location-update" id="locationUpdate" style="display: none;">📍 Location updated - recalculating time...</div>
-                <div id="clock" style="display: none;">
-                    <div class="time-display" id="exactTime">--:--:--</div>
-                    <div class="location-info">
-                        <div class="info-item">
-                            <strong>📍 Location:</strong> <span id="coordinates">--</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>🌍 Timezone:</strong> <span id="timezone">--</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>📝 Timezone Name:</strong> <span id="timezoneFull">--</span>
-                        </div>
-                        <div class="info-item highlighted">
-                            <strong>⏰ Time Adjustment:</strong> <span id="adjustment">--</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>🕒 Normal Local Time:</strong> <span id="normalTime">--</span>
-                        </div>
-                        <div class="info-item">
-                            <strong>🌐 Reference GMT Time:</strong> <span id="localTime">--</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="status" id="status" data-tone="info">
+          <span id="statusMessage">Requesting your location…</span>
         </div>
 
-        <!-- Right column: map (fills full viewport height) -->
-        <div class="right-panel">
-            <div class="map-container" id="mapContainer" style="display: none;">
-                <div class="map-controls">
-                    <button class="map-toggle active" id="gpsMode">📍 GPS Mode</button>
-                    <button class="map-toggle" id="manualMode">🗺️ Manual Mode</button>
-                </div>
-                <div class="map-instructions">
-                    <span id="gpsInstructions">GPS tracking your location automatically</span>
-                    <span id="manualInstructions" style="display: none;">Drag pin or click map to test different locations</span>
-                </div>
-                <div id="map"></div>
-                <div class="coordinates-input" id="coordsInput" style="display: none;">
-                    <input type="number" class="coord-input" id="latInput" placeholder="Latitude" step="0.0001">
-                    <input type="number" class="coord-input" id="lngInput" placeholder="Longitude" step="0.0001">
-                    <button class="apply-coords" id="applyCoords">Apply</button>
-                </div>
-                <div class="quick-locations" id="quickLocations" style="display: none; text-align: center; margin: 8px 0; flex-wrap: wrap; justify-content: center; gap: 5px;">
-                    <button class="quick-loc-btn" data-lat="40.7128" data-lng="-74.0060">New York</button>
-                    <button class="quick-loc-btn" data-lat="51.5074" data-lng="-0.1278">London</button>
-                    <button class="quick-loc-btn" data-lat="35.6762" data-lng="139.6503">Tokyo</button>
-                    <button class="quick-loc-btn" data-lat="-33.8688" data-lng="151.2093">Sydney</button>
-                    <button class="quick-loc-btn" data-lat="0.0000" data-lng="0.0000">Null Island</button>
-                </div>
-            </div>
+        <div id="permissionPrompt" class="status__actions" hidden>
+          <button type="button" class="button button--primary" id="locationBtn">
+            Use my location
+          </button>
+          <button type="button" class="button" id="skipLocationBtn">
+            Explore on the map instead
+          </button>
         </div>
+
+        <section id="clock" hidden>
+          <h2 class="clock__label" id="clockLabel">Exact solar time</h2>
+          <output
+            class="clock__time"
+            id="exactTime"
+            aria-labelledby="clockLabel"
+            aria-live="off"
+            >--:--:--</output
+          >
+          <p class="clock__meta">
+            <span id="exactDate">—</span> ·
+            <span id="nearestCity">—</span>
+          </p>
+        </section>
+
+        <section class="dial" id="dial" hidden aria-labelledby="dialLabel">
+          <svg
+            class="dial__gauge"
+            viewBox="0 0 100 100"
+            role="img"
+            aria-hidden="true"
+          >
+            <!-- 240° gauge: -30 min (left) through 0 (top) to +30 (right) -->
+            <path class="dial__track" d="M 15.36 70 A 40 40 0 1 1 84.64 70" />
+            <path class="dial__value" id="dialArc" d="" />
+            <line class="dial__tick" x1="50" y1="4" x2="50" y2="16" />
+          </svg>
+          <div>
+            <p class="dial__readout" id="dialReadout">—</p>
+            <p class="dial__caption" id="dialLabel">
+              Difference from standard clock time
+            </p>
+          </div>
+        </section>
+
+        <dl class="facts" id="facts" hidden>
+          <div class="fact">
+            <dt class="fact__label">Standard clock</dt>
+            <dd class="fact__value fact__value--mono" id="standardTime">—</dd>
+          </div>
+          <div class="fact">
+            <dt class="fact__label">UTC now</dt>
+            <dd class="fact__value fact__value--mono" id="utcTime">—</dd>
+          </div>
+          <div class="fact">
+            <dt class="fact__label">Nominal zone</dt>
+            <dd class="fact__value" id="timezone">—</dd>
+          </div>
+          <div class="fact">
+            <dt class="fact__label">Solar offset</dt>
+            <dd class="fact__value fact__value--mono" id="solarOffset">—</dd>
+          </div>
+          <div class="fact fact--wide">
+            <dt class="fact__label">Zone</dt>
+            <dd class="fact__value" id="timezoneFull">—</dd>
+          </div>
+          <div class="fact fact--wide">
+            <dt class="fact__label">Coordinates</dt>
+            <dd class="fact__value fact__value--mono" id="coordinates">—</dd>
+          </div>
+        </dl>
+
+        <footer class="colophon">
+          Calculated entirely in your browser — no coordinates leave this
+          device. Map data ©
+          <a href="https://www.openstreetmap.org/copyright" rel="noopener"
+            >OpenStreetMap</a
+          >
+          contributors.
+        </footer>
+      </main>
+
+      <!-- ── Map panel ───────────────────────────────────────────────── -->
+      <aside class="panel panel--map" aria-label="Location picker">
+        <div class="map__toolbar">
+          <div
+            class="segmented"
+            role="group"
+            aria-label="Location source"
+          >
+            <button
+              type="button"
+              class="button"
+              id="gpsMode"
+              aria-pressed="true"
+            >
+              Follow GPS
+            </button>
+            <button
+              type="button"
+              class="button"
+              id="manualMode"
+              aria-pressed="false"
+            >
+              Pick manually
+            </button>
+          </div>
+          <button type="button" class="button button--ghost" id="toggleMeridians" aria-pressed="true">
+            Zone meridians
+          </button>
+        </div>
+
+        <p class="map__hint" id="mapHint">
+          Tracking your location automatically.
+        </p>
+
+        <div id="map" class="map" role="application" aria-label="Map"></div>
+
+        <div id="manualControls" hidden>
+          <div class="coords">
+            <div class="field">
+              <label class="field__label" for="latInput">Latitude</label>
+              <input
+                type="number"
+                id="latInput"
+                min="-90"
+                max="90"
+                step="0.0001"
+                inputmode="decimal"
+              />
+            </div>
+            <div class="field">
+              <label class="field__label" for="lngInput">Longitude</label>
+              <input
+                type="number"
+                id="lngInput"
+                min="-180"
+                max="180"
+                step="0.0001"
+                inputmode="decimal"
+              />
+            </div>
+            <button type="button" class="button button--primary" id="applyCoords">
+              Go
+            </button>
+          </div>
+          <p class="visually-hidden" id="coordsError" role="alert"></p>
+          <div class="presets" id="presets"></div>
+        </div>
+      </aside>
     </div>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="src/constants.js"></script>
-    <script src="src/exactaclock.js"></script>
-    <script src="src/app.js"></script>
-</body>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script type="module" src="src/app.js"></script>
+  </body>
 </html>

@@ -34,10 +34,15 @@ jobs:
             --exclude ".github/*" \
             --exclude "node_modules/*" \
             --exclude "test/*" \
+            --exclude "src/*.test.js" \
             --exclude "Dockerfile" \
             --exclude "docker-compose.yml" \
             --exclude "package*.json" \
             --exclude "vitest.config.js" \
+            --exclude "eslint.config.js" \
+            --exclude ".prettierrc" \
+            --exclude "idea.md" \
+            --exclude "README.md" \
             --exclude ".dockerignore"
 
       - name: Invalidate CloudFront cache
