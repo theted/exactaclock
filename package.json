@@ -8,6 +8,7 @@
     "start": "http-server . -p 3003 -o --cors",
     "serve": "http-server . -p 3003 --cors",
     "dev": "http-server . -p 3003 -o --cors",
+    "build": "bash scripts/build.sh",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

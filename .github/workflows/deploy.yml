@@ -1,50 +1,38 @@
+# The sync lives in theted/workflows/.github/workflows/deploy-static.yml; the reasoning behind the
+# cache headers and the upload order is in static-s3.md in the private theted/infrastructure repo.
+#
+# Two things this fixes beyond sharing the steps:
+#
+#   - The trigger said `main`. The default branch is `master`, so no push has ever started a
+#     deploy — both live deploys were somebody pressing Run workflow by hand.
+#   - The old sync passed no --cache-control, so every object was served with no Cache-Control
+#     header at all.
 name: Deploy to S3
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
-permissions:
-  contents: read
+# One deploy at a time: the shared workflow deletes superseded objects, and it declares no
+# concurrency of its own. A called workflow runs inside this workflow's run, so this group covers it.
+concurrency:
+  group: deploy-s3
+  cancel-in-progress: true
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    env:
-      DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Sync site to S3
-        env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        run: |
-          aws s3 sync . "s3://${S3_BUCKET}" \
-            --delete \
-            --exclude ".git/*" \
-            --exclude ".github/*" \
-            --exclude "node_modules/*" \
-            --exclude "test/*" \
-            --exclude "src/*.test.js" \
-            --exclude "Dockerfile" \
-            --exclude "docker-compose.yml" \
-            --exclude "package*.json" \
-            --exclude "vitest.config.js" \
-            --exclude "eslint.config.js" \
-            --exclude ".prettierrc" \
-            --exclude "idea.md" \
-            --exclude "README.md" \
-            --exclude ".dockerignore"
-
-      - name: Invalidate CloudFront cache
-        if: ${{ env.DISTRIBUTION_ID != '' }}
-        run: aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+    uses: theted/workflows/.github/workflows/deploy-static.yml@master
+    with:
+      # Matches ci.yml.
+      node-version: '20'
+      # There is nothing to compile; `build` just assembles the publishable files into dist/ (see
+      # scripts/build.sh). The tests chain in front of it because ci.yml runs on push in parallel
+      # with this workflow rather than in front of it — without this gate, a commit that breaks the
+      # clock deploys while its test run is still going red.
+      build-command: npm run test:run && npm run build
+      dist-dir: dist
+      # immutable-glob is left at its default of assets/*, which matches nothing here: index.html
+      # loads src/*.js at stable URLs, so every object must revalidate. That is what the default
+      # gives, by matching nothing and letting the second pass take the whole bundle.
+    secrets: inherit
