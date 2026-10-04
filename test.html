@@ -4,44 +4,49 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Exactaclock — calculation reference</title>
-    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/styles/base.css" />
+    <link rel="stylesheet" href="src/styles/components.css" />
     <style>
-      .app {
-        grid-template-columns: minmax(0, 1fr);
+      .reference {
+        display: grid;
+        gap: 2.5rem;
         max-width: 60rem;
+        margin-inline: auto;
+        padding: 2.5rem 1rem;
+      }
+      .reference > * {
+        grid-area: auto;
+        min-width: 0;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.8125rem;
+        font-size: 0.875rem;
         font-variant-numeric: tabular-nums;
       }
       caption {
-        margin-bottom: var(--gap-3);
-        font-size: 0.8125rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.875rem;
         color: var(--text-muted);
         text-align: left;
       }
       th,
       td {
-        padding: 0.5rem 0.6rem;
+        padding: 0.55rem 0.6rem;
         text-align: left;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--line);
       }
       th {
         font-size: 0.6875rem;
         letter-spacing: 0.07em;
         text-transform: uppercase;
-        color: var(--text-faint);
-      }
-      td:not(:first-child) {
-        font-family: var(--font-mono);
+        color: var(--text-muted);
       }
       .ahead {
-        color: var(--ahead);
+        color: var(--sun-text);
       }
       .behind {
-        color: var(--behind);
+        color: var(--text-muted);
       }
       .table-scroll {
         overflow-x: auto;
@@ -49,34 +54,32 @@
     </style>
   </head>
   <body>
-    <div class="app">
-      <main class="panel panel--primary">
-        <header class="masthead">
-          <h1 class="masthead__title">Calculation reference</h1>
-          <p class="masthead__tagline">
-            A visual sanity check of the same functions the app and the Vitest
-            suite use. Run <code>npm run test:run</code> for the assertions.
-          </p>
-        </header>
+    <main class="reference">
+      <header class="brand">
+        <h1 class="brand__name">Calculation reference</h1>
+        <p class="brand__tagline">
+          A visual sanity check of the same functions the app and the Vitest
+          suite use. Run <code>npm run test:run</code> for the assertions.
+        </p>
+      </header>
 
-        <section class="table-scroll">
-          <table id="cities">
-            <caption>
-              Major cities — solar time against the nominal zone clock.
-            </caption>
-          </table>
-        </section>
+      <section class="card table-scroll">
+        <table id="cities">
+          <caption>
+            Major cities — solar time against the nominal zone clock.
+          </caption>
+        </table>
+      </section>
 
-        <section class="table-scroll">
-          <table id="sweep">
-            <caption>
-              A sweep across UTC+0. The correction must pass through zero on the
-              central meridian and reach ±30 min at the edges, with no jumps.
-            </caption>
-          </table>
-        </section>
-      </main>
-    </div>
+      <section class="card table-scroll">
+        <table id="sweep">
+          <caption>
+            A sweep across UTC+0. The correction must pass through zero on the
+            central meridian and reach ±30 min at the edges, with no jumps.
+          </caption>
+        </table>
+      </section>
+    </main>
 
     <script type="module">
       import { PRESET_LOCATIONS } from './src/constants.js';

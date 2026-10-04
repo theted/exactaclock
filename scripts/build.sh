@@ -23,4 +23,4 @@ find "$DIST/src" -name '*.test.js' -delete
 
 test -f "$DIST/index.html"
 test -f "$DIST/src/app.js"
-test -f "$DIST/src/styles.css"
+test -f "$DIST/src/styles/base.css"

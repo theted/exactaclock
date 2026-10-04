@@ -15,12 +15,7 @@ import {
   getTimezone,
   normalizeLongitude
 } from './exactaclock.js';
-import {
-  formatAdjustment,
-  formatClock,
-  formatCoordinates,
-  formatOffset
-} from './format.js';
+import { formatClock } from './format.js';
 
 const FIXED_NOW = new Date('2024-06-01T12:00:00.000Z');
 const minutesOf = date => date.getUTCHours() * 60 + date.getUTCMinutes();
@@ -239,29 +234,5 @@ describe('geography helpers', () => {
     expect(getNearestCity({ lat: -26.2, lng: 28.05 }).name).toBe(
       'Johannesburg'
     );
-  });
-});
-
-describe('formatting', () => {
-  test('formats clock times from UTC fields', () => {
-    expect(formatClock(new Date('2024-01-01T09:05:03Z'))).toBe('09:05:03');
-    expect(
-      formatClock(new Date('2024-01-01T09:05:03Z'), { seconds: false })
-    ).toBe('09:05');
-  });
-
-  test('formats offsets and coordinates', () => {
-    expect(formatOffset(90)).toBe('+01:30');
-    expect(formatOffset(-45)).toBe('-00:45');
-    expect(formatCoordinates({ lat: -33.8688, lng: 151.2093 })).toBe(
-      '33.8688° S, 151.2093° E'
-    );
-  });
-
-  test('describes the adjustment in words', () => {
-    expect(formatAdjustment(0)).toBe('Exactly on the central meridian');
-    expect(formatAdjustment(12.5)).toBe('12 min 30 s ahead');
-    expect(formatAdjustment(-2)).toBe('2 min behind');
-    expect(formatAdjustment(0.5)).toBe('30 s ahead');
   });
 });

@@ -1,0 +1,247 @@
+/* ==========================================================================
+   Exactaclock — design tokens, base elements and page layout
+   ========================================================================== */
+
+:root {
+  color-scheme: light dark;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-pill: 999px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Palette — light. One accent: the sun. Everything else is neutral. */
+  --bg: oklch(98.4% 0.004 85);
+  --surface: oklch(100% 0 0);
+  --surface-glass: oklch(100% 0 0 / 0.86);
+  --line: oklch(91.5% 0.005 85);
+  --line-strong: oklch(84% 0.006 85);
+
+  --text: oklch(22% 0.006 285);
+  --text-muted: oklch(50% 0.012 285);
+  --text-faint: oklch(60% 0.01 285);
+
+  --sun: oklch(77% 0.17 68);
+  --sun-text: oklch(55% 0.16 50);
+  --sun-soft: oklch(77% 0.17 68 / 0.16);
+  --glow: oklch(93% 0.06 80 / 0.7);
+  --live: oklch(63% 0.17 150);
+  --live-ring: oklch(63% 0.17 150 / 0.45);
+  --danger: oklch(53% 0.2 27);
+  --danger-soft: oklch(53% 0.2 27 / 0.08);
+
+  --tile-filter: saturate(0.3) brightness(1.04) contrast(0.92);
+
+  --shadow-sm: 0 1px 2px oklch(20% 0.01 285 / 0.05);
+  --shadow-md:
+    0 4px 14px oklch(20% 0.01 285 / 0.1), 0 1px 3px oklch(20% 0.01 285 / 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(15.5% 0.004 285);
+    --surface: oklch(20% 0.005 285);
+    --surface-glass: oklch(20% 0.005 285 / 0.86);
+    --line: oklch(27% 0.006 285);
+    --line-strong: oklch(36% 0.008 285);
+
+    --text: oklch(96.5% 0.003 285);
+    --text-muted: oklch(72% 0.012 285);
+    --text-faint: oklch(56% 0.01 285);
+
+    --sun: oklch(80% 0.16 72);
+    --sun-text: oklch(84% 0.15 78);
+    --sun-soft: oklch(80% 0.16 72 / 0.16);
+    --glow: oklch(40% 0.08 65 / 0.35);
+    --live: oklch(77% 0.17 150);
+    --live-ring: oklch(77% 0.17 150 / 0.4);
+    --danger: oklch(73% 0.16 25);
+    --danger-soft: oklch(73% 0.16 25 / 0.12);
+
+    --tile-filter: invert(1) hue-rotate(180deg) saturate(0.3) brightness(0.85)
+      contrast(0.9);
+
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
+    --shadow-md: 0 6px 20px oklch(0% 0 0 / 0.45);
+  }
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  color: var(--text);
+  background:
+    radial-gradient(44rem 30rem at -8% -12%, var(--glow), transparent 70%),
+    var(--bg);
+  background-repeat: no-repeat;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--sun);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.eyebrow .icon {
+  font-size: 1rem;
+}
+
+.eyebrow--sun {
+  color: var(--sun-text);
+}
+
+/* ==========================================================================
+   Layout
+   Phone: one column, the map in the middle of the story.
+   Desktop: the story on the left, the map filling the right.
+   ========================================================================== */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'brand' 'hero' 'diff' 'map' 'details' 'about' 'footer';
+  gap: 2rem;
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.brand {
+  grid-area: brand;
+}
+.hero {
+  grid-area: hero;
+}
+.diff {
+  grid-area: diff;
+}
+.map-panel {
+  grid-area: map;
+  height: clamp(22rem, 62vh, 34rem);
+}
+.details {
+  grid-area: details;
+}
+.about {
+  grid-area: about;
+}
+.colophon {
+  grid-area: footer;
+}
+
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: minmax(22rem, 28rem) minmax(0, 1fr);
+    grid-template-rows: repeat(5, auto) 1fr;
+    grid-template-areas:
+      'brand map' 'hero map' 'diff map' 'details map' 'about map'
+      'footer map';
+    column-gap: clamp(2.5rem, 4vw, 4rem);
+    max-width: none;
+    min-height: 100dvh;
+    padding: 0 0.75rem 0 clamp(2rem, 4vw, 4rem);
+  }
+
+  .brand {
+    padding-top: 2.5rem;
+  }
+
+  .colophon {
+    align-self: end;
+    padding-bottom: 2rem;
+  }
+
+  .map-panel {
+    position: sticky;
+    top: 0.75rem;
+    align-self: start;
+    height: calc(100dvh - 1.5rem);
+    margin-block: 0.75rem;
+  }
+}
+
+/* Readouts stay faint until they describe a real location. */
+.pending-fade {
+  transition: opacity 0.4s var(--ease);
+}
+
+[data-pending] .pending-fade {
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
