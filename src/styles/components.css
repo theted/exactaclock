@@ -1,0 +1,496 @@
+/* ==========================================================================
+   Brand
+   ========================================================================== */
+
+.brand__name {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.brand__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  fill: none;
+  stroke: var(--sun);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand__tagline {
+  margin-top: 0.375rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+/* ==========================================================================
+   Place + location status
+   ========================================================================== */
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.place__icon {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+}
+
+.place__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.65rem 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+}
+
+.status__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--sun);
+}
+
+.status[data-state='locating'] .status__dot {
+  animation: blink 0.9s ease-in-out infinite alternate;
+}
+
+.status[data-state='live'] .status__dot {
+  background: var(--live);
+  animation: ping 2s ease-out infinite;
+}
+
+.status[data-state='error'] {
+  color: var(--danger);
+}
+
+.status[data-state='error'] .status__dot {
+  background: var(--danger);
+}
+
+@keyframes blink {
+  to {
+    opacity: 0.25;
+  }
+}
+
+@keyframes ping {
+  from {
+    box-shadow: 0 0 0 0 var(--live-ring);
+  }
+  70%,
+  to {
+    box-shadow: 0 0 0 0.4rem transparent;
+  }
+}
+
+.notice {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.875rem;
+  background: var(--danger-soft);
+  border-radius: var(--radius-md);
+  text-wrap: pretty;
+}
+
+.link-button {
+  padding: 0;
+  font-weight: 600;
+  color: var(--danger);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Solar time
+   ========================================================================== */
+
+.clock {
+  margin-top: 0.5rem;
+  font-size: clamp(4rem, 19vw, 5.75rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock output {
+  display: block;
+}
+
+.clock__seconds {
+  margin-left: 0.06em;
+  font-size: 0.42em;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text-faint);
+}
+
+.hero__date {
+  margin-top: 0.625rem;
+  color: var(--text-muted);
+}
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 1.5rem;
+  overflow: hidden;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.compare__item {
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+}
+
+.compare dt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.compare dd {
+  margin-top: 0.125rem;
+  font-size: 1.375rem;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tag {
+  padding: 0.05rem 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+
+/* ==========================================================================
+   Sun vs. clock
+   ========================================================================== */
+
+.card {
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.diff__summary {
+  margin-top: 0.625rem;
+  color: var(--text-muted);
+}
+
+.diff__amount {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--sun-text);
+}
+
+.diff__detail {
+  margin-top: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+/* The zone as a ruler: west edge, central meridian, east edge. */
+.strip {
+  margin-top: 1.5rem;
+}
+
+.strip__track {
+  position: relative;
+  height: 0.375rem;
+  background: var(--line);
+  border-radius: var(--radius-pill);
+}
+
+.strip__fill,
+.strip__marker {
+  position: absolute;
+  transition:
+    left 0.5s var(--ease),
+    width 0.5s var(--ease);
+}
+
+.strip__fill {
+  inset-block: 0;
+  left: var(--fill-start, 50%);
+  width: var(--fill-size, 0%);
+  background: var(--sun);
+  border-radius: var(--radius-pill);
+}
+
+.strip__meridian {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 1.125rem;
+  background: var(--text-muted);
+  border-radius: 1px;
+  translate: -50% -50%;
+}
+
+.strip__marker {
+  top: 50%;
+  left: var(--position, 50%);
+  width: 1.25rem;
+  height: 1.25rem;
+  background: var(--sun);
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px oklch(0% 0 0 / 0.3);
+  translate: -50% -50%;
+}
+
+.strip__scale {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 0.875rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.strip__scale > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.strip__scale > span:nth-child(2) {
+  align-items: center;
+}
+
+.strip__scale > span:last-child {
+  align-items: flex-end;
+}
+
+.strip__scale b {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Details
+   ========================================================================== */
+
+.rows {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.7rem;
+  font-size: 0.9375rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.row dt {
+  color: var(--text-muted);
+}
+
+.row dd {
+  text-align: right;
+}
+
+.disclosure {
+  margin-top: 1rem;
+}
+
+.disclosure summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 550;
+  color: var(--text-muted);
+  list-style: none;
+  cursor: pointer;
+}
+
+.disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure summary::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid;
+  border-bottom: 1.5px solid;
+  rotate: -45deg;
+  transition: rotate 0.2s var(--ease);
+}
+
+.disclosure[open] summary::before {
+  rotate: 45deg;
+}
+
+.disclosure summary:hover {
+  color: var(--text);
+}
+
+.coords {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+  margin-top: 0.875rem;
+}
+
+.field {
+  display: grid;
+  flex: 1;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.field__label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.field input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  appearance: textfield;
+}
+
+.field input::-webkit-inner-spin-button,
+.field input::-webkit-outer-spin-button {
+  appearance: none;
+}
+
+.field input:focus-visible {
+  border-color: var(--sun);
+  outline-offset: 0;
+}
+
+.field__error {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
+.field__error:empty {
+  display: none;
+}
+
+.button {
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--text);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.button:hover {
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   How it works + footer
+   ========================================================================== */
+
+.steps {
+  display: grid;
+  gap: 0.875rem;
+  margin-top: 0.875rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  position: relative;
+  padding-left: 2.25rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  text-wrap: pretty;
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 0.05rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--sun-text);
+  background: var(--sun-soft);
+  border-radius: 50%;
+}
+
+.steps strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fineprint {
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+.colophon {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.colophon a {
+  font-weight: 550;
+}

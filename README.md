@@ -40,15 +40,19 @@ Latitude _is_ used for the "nearest city" readout, via the Haversine formula.
 
 ## Features ✨
 
-- **☀️ True solar time** — sun-accurate to the second at your exact longitude
-- **📊 Correction dial** — shows at a glance how far you are from your zone's meridian
-- **🗺️ Zone meridian overlay** — every 15° band drawn on the map, with your own zone shaded
-- **📍 Live GPS tracking** — the clock follows you as you move
-- **🖱️ Manual mode** — drag the pin, click the map, type coordinates, or use presets
-- **🌗 Light and dark themes** — follows your system preference
-- **♿ Accessible** — semantic landmarks, labelled controls, keyboard focus, reduced-motion support
-- **🔒 Private** — everything is computed in the browser; no coordinates leave the device
-- **🧪 Tested** — the app and the test suite import the same modules
+- **☀️ Solar time, front and centre**: sun-accurate to the second at your exact longitude
+- **⚖️ Sun vs. clock**: a plain-language verdict ("12 min 16 s ahead of UTC+1 clocks")
+  plus a ruler of your zone that shows where you stand between its edges and its meridian
+- **🗺️ Zone overlay**: every 15° band drawn on the map, your own zone shaded and its
+  central meridian highlighted
+- **📍 Live GPS tracking**: the clock follows you as you move
+- **👆 No modes**: tap the map, drag the pin, pick a city or type coordinates to explore;
+  "My location" takes you back
+- **🕛 Solar noon**: when the sun actually peaks, read off your zone clock
+- **🌗 Light and dark themes**: follow your system preference, map included
+- **♿ Accessible**: semantic landmarks, labelled controls, keyboard focus, reduced-motion support
+- **🔒 Private**: everything is computed in the browser, with no accounts and no tracking
+- **🧪 Tested**: the app and the test suite import the same modules
 
 ## Quick start 🚀
 
@@ -73,8 +77,8 @@ brew install mkcert && mkcert -install && mkcert localhost
 npx http-server . -p 3003 -S -C localhost.pem -K localhost-key.pem
 ```
 
-If you decline the location prompt the app still works — it falls back to the Royal
-Observatory in Greenwich and drops you into manual mode.
+If you decline the location prompt the app still works. It falls back to the Royal
+Observatory in Greenwich, and you can pick any spot on the map instead.
 
 ## Development
 
@@ -103,16 +107,22 @@ exactaclock/
 ├── eslint.config.js      # Flat ESLint config
 ├── vitest.config.js
 └── src/
-    ├── app.js            # UI controller: GPS, map, DOM
+    ├── app.js            # Controller: state and wiring
+    ├── view.js           # DOM rendering, plus the copy and strip geometry
+    ├── map.js            # Leaflet map, zone overlay and pin
+    ├── geolocation.js    # watchPosition wrapper that always reaches a verdict
     ├── constants.js      # Timezone bands, cities, presets
     ├── exactaclock.js    # Core solar-time maths (no DOM)
     ├── format.js         # Display formatting
-    ├── styles.css        # Design tokens + components
-    └── exactaclock.test.js
+    ├── styles/
+    │   ├── base.css      # Design tokens, base elements, page layout
+    │   ├── components.css
+    │   └── map.css       # Map panel, overlay, Leaflet restyling
+    └── *.test.js         # One test file per module
 ```
 
-`exactaclock.js` and `format.js` are pure and DOM-free, so the tests import exactly what
-the browser runs.
+`exactaclock.js`, `format.js` and `geolocation.js` are DOM-free, and `view.js` keeps its
+pure helpers separate from its rendering, so the tests import exactly what the browser runs.
 
 ## API reference 🔧
 

@@ -1,18 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Exactaclock — sun-accurate local time</title>
+    <title>Exactaclock — the time the sun keeps where you stand</title>
     <meta
       name="description"
-      content="Exactaclock shows the true solar time at your exact coordinates, instead of rounding it to the nearest timezone."
+      content="Exactaclock shows the solar time at your exact longitude, and how far it drifts from the clock your timezone rounds it to."
     />
-    <meta name="theme-color" content="#131a24" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      content="#0e0e11"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="theme-color"
+      content="#faf9f7"
+      media="(prefers-color-scheme: light)"
+    />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%2338bdc8' stroke-width='2.5'/%3E%3Cpath d='M16 8v8.6l5.5 3.2' fill='none' stroke='%2338bdc8' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='8.5'/%3E%3Cpath d='M16 12v4.5l2.75 1.75M16 2v3M16 27v3M2 16h3M27 16h3M6.1 6.1l2.1 2.1M23.8 23.8l2.1 2.1M6.1 25.9l2.1-2.1M23.8 8.2l2.1-2.1'/%3E%3C/svg%3E"
     />
     <link
       rel="stylesheet"
@@ -20,194 +29,238 @@
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
-    <link rel="stylesheet" href="src/styles.css" />
+    <link rel="stylesheet" href="src/styles/base.css" />
+    <link rel="stylesheet" href="src/styles/components.css" />
+    <link rel="stylesheet" href="src/styles/map.css" />
   </head>
-  <body>
-    <div class="app">
-      <!-- ── Clock panel ─────────────────────────────────────────────── -->
-      <main class="panel panel--primary">
-        <header class="masthead">
-          <h1 class="masthead__title">
-            <svg class="masthead__mark" viewBox="0 0 32 32" aria-hidden="true">
-              <circle
-                cx="16"
-                cy="16"
-                r="13"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-              />
-              <path
-                d="M16 8v8.6l5.5 3.2"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-              />
-            </svg>
-            Exactaclock
-          </h1>
-          <p class="masthead__tagline">
-            Timezones round the sun off to the nearest hour. This clock does
-            not — it reads the true solar time at your exact longitude, drifting
-            up to 30&nbsp;minutes from the zone on the wall.
-          </p>
-        </header>
+  <body data-pending>
+    <svg hidden>
+      <symbol id="icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path
+          d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+        />
+      </symbol>
+      <symbol id="icon-pin" viewBox="0 0 24 24">
+        <path d="M12 21.5s-7-6.1-7-11.6a7 7 0 0 1 14 0c0 5.5-7 11.6-7 11.6Z" />
+        <circle cx="12" cy="9.75" r="2.5" />
+      </symbol>
+      <symbol id="icon-locate" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="7" />
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+      </symbol>
+    </svg>
 
-        <div class="status" id="status" data-tone="info">
-          <span id="statusMessage">Requesting your location…</span>
-        </div>
-
-        <div id="permissionPrompt" class="status__actions" hidden>
-          <button type="button" class="button button--primary" id="locationBtn">
-            Use my location
-          </button>
-          <button type="button" class="button" id="skipLocationBtn">
-            Explore on the map instead
-          </button>
-        </div>
-
-        <section id="clock" hidden>
-          <h2 class="clock__label" id="clockLabel">Exact solar time</h2>
-          <output
-            class="clock__time"
-            id="exactTime"
-            aria-labelledby="clockLabel"
-            aria-live="off"
-            >--:--:--</output
-          >
-          <p class="clock__meta">
-            <span id="exactDate">—</span> ·
-            <span id="nearestCity">—</span>
-          </p>
-        </section>
-
-        <section class="dial" id="dial" hidden aria-labelledby="dialLabel">
-          <svg
-            class="dial__gauge"
-            viewBox="0 0 100 100"
-            role="img"
-            aria-hidden="true"
-          >
-            <!-- 240° gauge: -30 min (left) through 0 (top) to +30 (right) -->
-            <path class="dial__track" d="M 15.36 70 A 40 40 0 1 1 84.64 70" />
-            <path class="dial__value" id="dialArc" d="" />
-            <line class="dial__tick" x1="50" y1="4" x2="50" y2="16" />
+    <main class="layout">
+      <!-- ── Brand ───────────────────────────────────────────────────── -->
+      <header class="brand">
+        <h1 class="brand__name">
+          <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="16" cy="16" r="8.5" />
+            <path
+              d="M16 12v4.5l2.75 1.75M16 2v3M16 27v3M2 16h3M27 16h3M6.1 6.1l2.1 2.1M23.8 23.8l2.1 2.1M6.1 25.9l2.1-2.1M23.8 8.2l2.1-2.1"
+            />
           </svg>
-          <div>
-            <p class="dial__readout" id="dialReadout">—</p>
-            <p class="dial__caption" id="dialLabel">
-              Difference from standard clock time
-            </p>
-          </div>
-        </section>
+          Exactaclock
+        </h1>
+        <p class="brand__tagline">
+          Your clock rounds the sun to the nearest hour. This one doesn’t.
+        </p>
+      </header>
 
-        <dl class="facts" id="facts" hidden>
-          <div class="fact">
-            <dt class="fact__label">Standard clock</dt>
-            <dd class="fact__value fact__value--mono" id="standardTime">—</dd>
+      <!-- ── Solar time ──────────────────────────────────────────────── -->
+      <section class="hero" aria-labelledby="solarLabel">
+        <div class="place">
+          <svg class="icon place__icon" aria-hidden="true">
+            <use href="#icon-pin" />
+          </svg>
+          <p class="place__name" id="placeName">Finding you…</p>
+          <p class="status" id="status" data-state="locating">
+            <span class="status__dot" aria-hidden="true"></span>
+            <span id="statusText">Locating…</span>
+          </p>
+        </div>
+
+        <p class="notice" id="notice" role="status" hidden>
+          <span id="noticeText"></span>
+          <button type="button" class="link-button" id="retryBtn">
+            Try again
+          </button>
+        </p>
+
+        <h2 class="eyebrow eyebrow--sun" id="solarLabel">
+          <svg class="icon" aria-hidden="true"><use href="#icon-sun" /></svg>
+          Solar time
+        </h2>
+        <p class="clock pending-fade">
+          <output id="solarTime" aria-labelledby="solarLabel" aria-live="off"
+            ><span id="solarHm">--:--</span
+            ><span class="clock__seconds" id="solarSec">:--</span></output
+          >
+        </p>
+        <p class="hero__date" id="solarDate">—</p>
+
+        <dl class="compare pending-fade">
+          <div class="compare__item">
+            <dt>Zone clock <span class="tag" id="zoneName">UTC+0</span></dt>
+            <dd id="zoneTime">--:--:--</dd>
           </div>
-          <div class="fact">
-            <dt class="fact__label">UTC now</dt>
-            <dd class="fact__value fact__value--mono" id="utcTime">—</dd>
+          <div class="compare__item">
+            <dt>UTC</dt>
+            <dd id="utcTime">--:--:--</dd>
           </div>
-          <div class="fact">
-            <dt class="fact__label">Nominal zone</dt>
-            <dd class="fact__value" id="timezone">—</dd>
+        </dl>
+      </section>
+
+      <!-- ── Sun vs. clock ───────────────────────────────────────────── -->
+      <section class="card diff pending-fade" aria-labelledby="diffLabel">
+        <h2 class="eyebrow" id="diffLabel">Sun vs. clock</h2>
+        <p class="diff__summary">
+          <strong class="diff__amount" id="diffAmount">—</strong>
+          <span id="diffDirection"></span>
+        </p>
+
+        <!-- A picture of the zone: −30 min at its west edge, 0 on the
+             central meridian, +30 min at its east edge. -->
+        <div class="strip" id="strip" aria-hidden="true">
+          <div class="strip__track">
+            <span class="strip__fill"></span>
+            <span class="strip__meridian"></span>
+            <span class="strip__marker"></span>
           </div>
-          <div class="fact">
-            <dt class="fact__label">Solar offset</dt>
-            <dd class="fact__value fact__value--mono" id="solarOffset">—</dd>
+          <div class="strip__scale">
+            <span><b>−30 min</b><span id="stripWest">—</span></span>
+            <span><b>0</b><span id="stripCenter">—</span></span>
+            <span><b>+30 min</b><span id="stripEast">—</span></span>
           </div>
-          <div class="fact fact--wide">
-            <dt class="fact__label">Zone</dt>
-            <dd class="fact__value" id="timezoneFull">—</dd>
+        </div>
+
+        <p class="diff__detail" id="diffDetail"></p>
+      </section>
+
+      <!-- ── Map ─────────────────────────────────────────────────────── -->
+      <section class="map-panel" id="mapPanel" aria-label="Map">
+        <div
+          id="map"
+          class="map"
+          role="application"
+          aria-label="Map. Click anywhere to see the solar time there."
+        ></div>
+
+        <div class="map-panel__bar">
+          <button
+            type="button"
+            class="chip chip--locate"
+            id="locateBtn"
+            aria-pressed="true"
+          >
+            <svg class="icon" aria-hidden="true">
+              <use href="#icon-locate" />
+            </svg>
+            My location
+          </button>
+          <div
+            class="chips"
+            id="presets"
+            role="group"
+            aria-label="Jump to"
+          ></div>
+        </div>
+
+        <p class="map-panel__hint" id="mapHint">Pick any spot on the map</p>
+        <p class="map-panel__offline">
+          The map couldn’t load. Use the city buttons above, or enter
+          coordinates below.
+        </p>
+      </section>
+
+      <!-- ── Details ─────────────────────────────────────────────────── -->
+      <section class="details" aria-labelledby="detailsLabel">
+        <h2 class="eyebrow" id="detailsLabel">Details</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt>Time zone</dt>
+            <dd id="zoneFull">—</dd>
           </div>
-          <div class="fact fact--wide">
-            <dt class="fact__label">Coordinates</dt>
-            <dd class="fact__value fact__value--mono" id="coordinates">—</dd>
+          <div class="row">
+            <dt>Solar noon</dt>
+            <dd><span id="solarNoon" class="num">—</span> zone time</dd>
+          </div>
+          <div class="row">
+            <dt>Offset from UTC</dt>
+            <dd id="solarOffset" class="num">—</dd>
+          </div>
+          <div class="row">
+            <dt>Coordinates</dt>
+            <dd id="coordinates" class="num">—</dd>
           </div>
         </dl>
 
-        <footer class="colophon">
-          Calculated entirely in your browser — no coordinates leave this
-          device. Map data ©
-          <a href="https://www.openstreetmap.org/copyright" rel="noopener"
-            >OpenStreetMap</a
-          >
-          contributors.
-        </footer>
-      </main>
-
-      <!-- ── Map panel ───────────────────────────────────────────────── -->
-      <aside class="panel panel--map" aria-label="Location picker">
-        <div class="map__toolbar">
-          <div
-            class="segmented"
-            role="group"
-            aria-label="Location source"
-          >
-            <button
-              type="button"
-              class="button"
-              id="gpsMode"
-              aria-pressed="true"
-            >
-              Follow GPS
-            </button>
-            <button
-              type="button"
-              class="button"
-              id="manualMode"
-              aria-pressed="false"
-            >
-              Pick manually
-            </button>
-          </div>
-          <button type="button" class="button button--ghost" id="toggleMeridians" aria-pressed="true">
-            Zone meridians
-          </button>
-        </div>
-
-        <p class="map__hint" id="mapHint">
-          Tracking your location automatically.
-        </p>
-
-        <div id="map" class="map" role="application" aria-label="Map"></div>
-
-        <div id="manualControls" hidden>
-          <div class="coords">
-            <div class="field">
-              <label class="field__label" for="latInput">Latitude</label>
+        <details class="disclosure">
+          <summary>Enter coordinates</summary>
+          <form class="coords" id="coordsForm" novalidate>
+            <label class="field">
+              <span class="field__label">Latitude</span>
               <input
                 type="number"
                 id="latInput"
                 min="-90"
                 max="90"
-                step="0.0001"
+                step="any"
                 inputmode="decimal"
+                autocomplete="off"
               />
-            </div>
-            <div class="field">
-              <label class="field__label" for="lngInput">Longitude</label>
+            </label>
+            <label class="field">
+              <span class="field__label">Longitude</span>
               <input
                 type="number"
                 id="lngInput"
                 min="-180"
                 max="180"
-                step="0.0001"
+                step="any"
                 inputmode="decimal"
+                autocomplete="off"
               />
-            </div>
-            <button type="button" class="button button--primary" id="applyCoords">
-              Go
-            </button>
-          </div>
-          <p class="visually-hidden" id="coordsError" role="alert"></p>
-          <div class="presets" id="presets"></div>
-        </div>
-      </aside>
-    </div>
+            </label>
+            <button type="submit" class="button">Show</button>
+          </form>
+          <p class="field__error" id="coordsError" role="alert"></p>
+        </details>
+      </section>
+
+      <!-- ── Explainer ───────────────────────────────────────────────── -->
+      <section class="about" aria-labelledby="aboutLabel">
+        <h2 class="eyebrow" id="aboutLabel">How it works</h2>
+        <ol class="steps">
+          <li>
+            <strong>4 minutes per degree.</strong> The Earth turns 360° a day,
+            so the sun crosses one degree of longitude every four minutes.
+          </li>
+          <li>
+            <strong>Zones round it off.</strong> A time zone is 15° wide, and
+            every clock in it shows the time at its central meridian.
+          </li>
+          <li>
+            <strong>Up to 30 minutes out.</strong> The farther you are from that
+            line, the more your clock and the sun disagree — half an hour at the
+            zone’s edge.
+          </li>
+        </ol>
+        <p class="fineprint">
+          Uses idealised 15° zones and mean solar time. Real zone borders,
+          daylight saving and the sun’s seasonal wobble aren’t modelled.
+        </p>
+      </section>
+
+      <footer class="colophon">
+        No accounts, no tracking — everything is calculated in your browser.
+        <a href="https://github.com/theted/exactaclock" rel="noopener"
+          >Source</a
+        >
+      </footer>
+    </main>
 
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

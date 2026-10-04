@@ -1,0 +1,238 @@
+/* ==========================================================================
+   Map panel
+   ========================================================================== */
+
+.map-panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  isolation: isolate;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Floating controls sit above Leaflet's own panes and controls. */
+.map-panel__bar,
+.map-panel__hint {
+  position: absolute;
+  z-index: 1;
+}
+
+.map-panel__bar {
+  inset-inline: 0;
+  top: 0;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: none;
+}
+
+.map-panel__bar::-webkit-scrollbar {
+  display: none;
+}
+
+.map-panel__bar > * {
+  pointer-events: auto;
+}
+
+.chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  white-space: nowrap;
+  background: var(--surface-glass);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.chip:hover {
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+
+.chip--locate .icon {
+  font-size: 1rem;
+}
+
+.chip--locate[aria-pressed='true'] {
+  color: var(--sun-text);
+  background:
+    linear-gradient(var(--sun-soft), var(--sun-soft)), var(--surface-glass);
+  border-color: var(--sun-soft);
+}
+
+.map-panel__hint {
+  bottom: 2rem;
+  left: 50%;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  background: var(--surface-glass);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.map-panel__offline {
+  display: none;
+}
+
+.map-panel[data-offline] .map-panel__offline {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 4rem 2rem 2rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.map-panel[data-offline] .map-panel__hint {
+  display: none;
+}
+
+/* ==========================================================================
+   Zone overlay — Leaflet draws the shapes, CSS colours them.
+   ========================================================================== */
+
+.zone-edge {
+  stroke: var(--text);
+  stroke-opacity: 0.22;
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+}
+
+.zone-band {
+  fill: var(--sun);
+  fill-opacity: 0.1;
+  stroke: none;
+}
+
+.zone-meridian {
+  stroke: var(--sun);
+  stroke-opacity: 0.95;
+  stroke-width: 2;
+}
+
+.sun-marker {
+  cursor: grab;
+}
+
+.sun-marker:active {
+  cursor: grabbing;
+}
+
+.sun-marker__dot {
+  position: absolute;
+  inset: 4px;
+  background: var(--sun);
+  border: 3px solid oklch(100% 0 0);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px oklch(0% 0 0 / 0.35);
+}
+
+.sun-marker.is-live::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sun);
+  border-radius: 50%;
+  animation: halo 2.4s ease-out infinite;
+}
+
+@keyframes halo {
+  from {
+    opacity: 0.55;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+/* ==========================================================================
+   Leaflet chrome, restyled to match
+   ========================================================================== */
+
+.map .leaflet-tile-pane {
+  filter: var(--tile-filter);
+}
+
+.map.leaflet-container {
+  font: inherit;
+  background: var(--bg);
+}
+
+.map .leaflet-bar {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.map .leaflet-right .leaflet-bar {
+  margin-right: 0.75rem;
+}
+
+.map .leaflet-bar a,
+.map .leaflet-bar a.leaflet-disabled {
+  width: 2.25rem;
+  height: 2.25rem;
+  font: 400 1.25rem/2.25rem var(--font-sans);
+  color: var(--text);
+  background: var(--surface-glass);
+  border-bottom-color: var(--line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.map .leaflet-bar a.leaflet-disabled {
+  color: var(--text-faint);
+}
+
+.map .leaflet-bar a:hover {
+  background: var(--surface);
+}
+
+.map .leaflet-control-attribution {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--surface-glass);
+  border-top-left-radius: var(--radius-sm);
+}
+
+.map .leaflet-control-attribution a {
+  color: inherit;
+}
