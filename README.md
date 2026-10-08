@@ -51,7 +51,8 @@ Latitude _is_ used for the "nearest city" readout, via the Haversine formula.
 - **🕛 Solar noon**: when the sun actually peaks, read off your zone clock
 - **🌗 Light and dark themes**: follow your system preference, map included
 - **♿ Accessible**: semantic landmarks, labelled controls, keyboard focus, reduced-motion support
-- **🔒 Private**: everything is computed in the browser, with no accounts and no tracking
+- **🔒 Private**: everything is computed in the browser, with no accounts and no cookies. Page
+  loads are counted as daily totals, and no IP addresses are stored
 - **🧪 Tested**: the app and the test suite import the same modules
 
 ## Quick start 🚀
